@@ -12,7 +12,7 @@ from alembic.migration import MigrationContext
 
 import knowledge_repo
 from .proxies import db_session, current_repo
-from .index import update_index, time_since_index, time_since_index_check
+from .index import update_index, time_since_index, time_since_index_check, _update_index
 from .models import db as sqlalchemy_db, Post, User, Tag
 from . import routes
 
@@ -146,6 +146,11 @@ class KnowledgeFlask(Flask):
                         version_revision=version_revision,
                         last_index=time_since_index(human_readable=True),
                         last_index_check=time_since_index_check(human_readable=True))
+
+        @self.route('/force_reindex', methods=['GET'])
+        def force_reindex():
+            _update_index(current_app, force=True)
+            return "Index Updated"
 
     @property
     def repository(self):

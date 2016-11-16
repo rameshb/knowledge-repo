@@ -15,16 +15,25 @@ logger = logging.getLogger(__name__)
 
 
 def is_indexing():
-    return int(IndexMetadata.get('lock', 'index', '0'))
+    last_update = time_since_index()
+    return bool(IndexMetadata.get('lock', 'index', '0')) and last_update is not None and (last_update < 10 * 60)
 
 
 def time_since_index(human_readable=False):
     last_update = IndexMetadata.get_last_update('lock', 'index')
-    return time_since(last_update, human_readable=human_readable)
+    ts = time_since(last_update, human_readable=human_readable)
+    if human_readable:
+        if is_indexing():
+            return 'Currently indexing'
+        if ts is None:
+            return "Never"
+    return ts
 
 
 def time_since_index_check(human_readable=False):
     last_update = IndexMetadata.get_last_update('check', 'index')
+    if human_readable and last_update is None:
+        return "Never"
     return time_since(last_update, human_readable=human_readable)
 
 
@@ -67,14 +76,14 @@ def update_index():
         _update_index(current_app)
 
 
-def _update_index(app):
+def _update_index(app, force=False):
 
     context = None
     if not has_app_context():
         context = app.app_context()
         context.__enter__()
 
-    if is_indexing():
+    if not force and is_indexing():
         return
     IndexMetadata.set('lock', 'index', True)
     db_session.commit()
